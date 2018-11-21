@@ -2,28 +2,36 @@
 /* global document,window,console,requestAnimationFrame*/
 /* jshint -W097,-W014 */ //turn off use strict and comma styling warnings
 
-// Canvas init
+//-- Canvas init
+// Handles
 var canvas = document.querySelector('canvas');
-var canvasWidth = window.innerWidth-2;
-var canvasHeight = window.innerHeight-2;
-canvas.width = canvasWidth;
-canvas.height = canvasHeight;
+var container = document.querySelector('#canvas-container');
+var canvasBoundingRect = canvas.getBoundingClientRect();
 var c = canvas.getContext('2d');
+// Style
+var paddingPixelBuffer = 2;
+canvas.width = container.offsetWidth - paddingPixelBuffer;
+canvas.height = container.offsetHeight - paddingPixelBuffer;
+canvas.style.border = paddingPixelBuffer/2 + 'px solid black';
+canvas.style.display = 'block';
+
+var canvasStartX = Math.floor(canvasBoundingRect.left);
+var canvasStartY = Math.floor(canvasBoundingRect.top);
 
 
-// Constants
+//-- Constants
 var standardRadius = 30;
 var largeRadius = 40;
 
-// Helper Utils
+//-- Helper Utils
 
 
-// Game State
+//-- Game State
 var vertices = [];
 var mouseLoc = {x:null, y: null}; // last known mouse location
 
 
-// Game objects
+//-- Game objects
 var Vertex = function(x, y) {
     this.x = x;
     this.y = y;
@@ -49,15 +57,15 @@ var Vertex = function(x, y) {
 };
 
 
-// Game Init
+//-- Game Init
 vertices.push(new Vertex(0,0));
 vertices.push(new Vertex(100,100));
 vertices.push(new Vertex(300,300));
 
 
-// Game Logic & Animation Loop
+//-- Game Logic & Animation Loop
 var animationLoop = function() {
-    c.clearRect(0, 0, canvasWidth, canvasHeight); // clear canvas
+    c.clearRect(0, 0, canvas.width, canvas.height); // clear canvas
 
     vertices.forEach(function(vertex) {
         vertex.render();
@@ -68,9 +76,12 @@ var animationLoop = function() {
 animationLoop();
 
 
-// Event Listeners
+//-- Event Listeners
 window.addEventListener('mousemove', function(event) {
-    mouseLoc.x = event.x;
-    mouseLoc.y = event.y;
+    // event gives x/y coordinate on the page but we need it relative to the canvas
+    mouseLoc.x = event.x - canvasStartX;
+    mouseLoc.y = event.y - canvasStartY;
+
+    //console.log('(' + mouseLoc.x + '),(' + mouseLoc.y + ')');
 });
 
