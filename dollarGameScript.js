@@ -37,6 +37,12 @@ var getPosition = function(xPercent, yPercent) {
         , y: Math.floor(yPercent * 0.01 * canvas.height)
     };
 };
+var getSize = function(widthPercent, heightPercent) {
+    return {
+        width: Math.floor(widthPercent * 0.01 * canvas.width)
+        , height: Math.floor(heightPercent * 0.01 * canvas.height)
+    };
+};
 
 
 //-- Constants
@@ -45,12 +51,14 @@ var largeRadius = 40;
 var edgeStandardWidth = 3;
 var edgeLargeWidth = 10;
 
+
 //-- Game State
 var mouseLoc = {x:null, y: null}; // last known mouse location relative to canvas
 var edges = [];
 var vertices = [];
 var adjacentList = {};
 var vertexIdCount = 0;
+var actionButtons = [];
 
 
 //-- Helper Utils
@@ -95,21 +103,28 @@ var selectEdgesByVertexId = function(id) {
     });
 };
 
+var toggleButtons = function(isShown) {
+    actionButtons.forEach(function(actionButton) {
+        actionButton.isShown = isShown;
+    });
+};
+
 
 //-- Game objects
-var Vertex = function(x, y) {
+var Vertex = function(x, y, value) {
     this.x = x;
     this.y = y;
     this.radius = standardRadius;
     this.isSelected = false; //unimplemented!
     this.id = vertexIdCount;
-    vertexIdCount++;
+    this.value = value;
+    
+    vertexIdCount++; // increment so the next id is unique
+    adjacentList[this.id] = []; // update ajacentList
 
-    // update ajacentList
-    adjacentList[this.id] = [];
+
 
     this.render = function() {
-       
         // Expand or contract the radius on mouse over OR selection
         var isMousedOver = Math.abs(mouseLoc.x - this.x) < this.radius && Math.abs(mouseLoc.y - this.y) < this.radius;
         if ((this.isSelected||isMousedOver) && this.radius < largeRadius) {
@@ -123,6 +138,12 @@ var Vertex = function(x, y) {
         c.arc(this.x, this.y, this.radius, 0,  Math.PI * 2, false);
         c.fillStyle = 'rgb('+ this.id + ',0,255)';
         c.fill();
+
+        c.font = '40px san-serif';
+        c.fillStyle = 'white'; //AHH creates issues on the click handler :/
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';   
+        c.fillText(this.value, this.x, this.y);         
     };
 };
 
@@ -153,10 +174,44 @@ var Edge = function(vertexA, vertexB) {
 
 };
 
+var ActionButton = function(x, y, width, height, color, content, action) {
+    this.x = x;
+    this.y = y;
+    this.width = width;
+    this.height = height;
+    this.color = color;
+    this.content = content;
+    this.isShown = false;
+
+    this.isMousedOver = function() {
+        return mouseLoc.x >= this.x && mouseLoc.x <= this.x + this.width
+            && mouseLoc.y >= this.y && mouseLoc.y <= this.y + this.height;
+    };
+
+    this.render = function() {
+        if (this.isShown) {
+            c.beginPath();
+            c.rect(x,y,width,height);
+            c.fillStyle = this.color;
+            c.fill();
+            // c.lineWidth = 3;
+            // c.strokeStyle = 'black';
+            // c.stroke();
+
+            c.font = 'bold ' + this.height + 'px san-serif';
+            c.fillStyle = 'black';
+            c.textAlign = 'center';
+            c.textBaseline = 'middle';
+
+            c.fillText(content, this.x + this.width/2, this.y + this.height/2);
+        }
+    };
+};
+
 //-- Game Init
 for (var i = 0; i < 5; i++) {
     var pos = getPosition(Math.random() * 90 + 5, Math.random() * 90 + 5);
-    vertices.push(new Vertex(pos.x, pos.y));
+    vertices.push(new Vertex(pos.x, pos.y, -3));
 }
 
 edges.push(new Edge(vertices[0], vertices[1]));
@@ -165,8 +220,14 @@ edges.push(new Edge(vertices[2], vertices[0]));
 edges.push(new Edge(vertices[0], vertices[3]));
 edges.push(new Edge(vertices[3], vertices[4]));
 
+//var button1Pos = getPosition(10,90);
+var buttonSize = 40;
+var buttonBuffer = 20;
+actionButtons.push(new ActionButton(buttonBuffer, canvas.height - buttonSize - buttonBuffer, buttonSize, buttonSize, 'green', '+', null));
+actionButtons.push(new ActionButton(buttonBuffer*2+buttonSize, canvas.height - buttonSize - buttonBuffer, buttonSize, buttonSize, 'red', '-', null));
 
-//-- Game Logic & Animation Loop
+
+//-- Animation Loop
 var animationLoop = function() {
     c.clearRect(0, 0, canvas.width, canvas.height); // clear canvas
 
@@ -176,6 +237,10 @@ var animationLoop = function() {
 
     vertices.forEach(function(vertex) {
         vertex.render();
+    });
+
+    actionButtons.forEach(function(actionButton) {
+        actionButton.render();
     });
 
 
@@ -206,17 +271,28 @@ window.addEventListener('click', function(event) {
     var r = clickPixel[0]; //our vertice id
     var g = clickPixel[1]; //should match 0
     var b = clickPixel[2]; //should match 255
-    if (r < vertices.length && g === 0 && b === 255) {
+    var isMousedOverPlus = actionButtons[0].isMousedOver();
+    var isMousedOverMinus = actionButtons[1].isMousedOver();
+    if (actionButtons[0].isShown && (isMousedOverPlus || isMousedOverMinus) ) {
+        //TOOD handle click 
+        if (isMousedOverPlus) {
+            // todo isMousedOverPlus action
+            console.log('Plus click');
+        } else if (isMousedOverMinus) {
+            // todo isMousedOverMinus action
+            console.log('Minus click');
+        }
+    } else if (r < vertices.length && g === 0 && b === 255) {
         console.log('vertex click detected on id:' + r);
         //var vertex = getVertexById(r);
         selectVertexById(r);
         selectEdgesByVertexId(r);
+        toggleButtons(true);
         //console.log(vertex);
-    }
-    //todo else if logic here for click on buttons
-    else {
+    } else {
         selectVertexById(-1);
         selectEdgesByVertexId(-1);
+        toggleButtons(false);
     }
 
 });
