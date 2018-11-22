@@ -1,5 +1,5 @@
 "use strict";
-/* global document,window,console,requestAnimationFrame*/
+/* global document,window,console,requestAnimationFrame,setTimeout*/
 /* jshint -W097,-W014 */ //turn off use strict and comma styling warnings
 
 //-- Canvas init
@@ -42,13 +42,58 @@ var getPosition = function(xPercent, yPercent) {
 //-- Constants
 var standardRadius = 30;
 var largeRadius = 40;
-
-//-- Helper Utils
-
+var edgeStandardWidth = 3;
+var edgeLargeWidth = 10;
 
 //-- Game State
-var vertices = [];
 var mouseLoc = {x:null, y: null}; // last known mouse location relative to canvas
+var edges = [];
+var vertices = [];
+var adjacentList = {};
+var vertexIdCount = 0;
+
+
+//-- Helper Utils
+var getVertexById = function(id) {
+    for (var i = 0; i < vertices.length; i++) {
+        if (vertices[i].id === id) return vertices[i];
+    }
+
+    throw 'unable to find vertex with id: ' + id;
+};
+
+// sets selected on provided vertex, sets all others to deselected
+// id = id of vertex. Pass -1 to deselect all.
+var selectVertexById = function(id) {
+    var foundId = false;
+    vertices.forEach(function(vertex) {
+        if (vertex.id === id) {
+            vertex.isSelected = true;
+            foundId = true;
+        } else {
+            vertex.isSelected = false;
+        }
+    });
+
+    if (!foundId && id >= 0) throw 'unable to find vertex with id: ' + id;
+};
+
+// set sselected on all edges to provided vertex, sets all others to deselected
+// id = id of vertex. Pass -1 to deselect all.
+var selectEdgesByVertexId = function(id) {
+    var vertex = (id >= 0) ? getVertexById(id) : null;
+
+    edges.forEach(function(edge) {
+        // first conditional is technically not necessary, just here for code clarity
+        if (vertex === null) {
+            edge.isSelected = false;
+        } else if (edge.vertexA === vertex || edge.vertexB === vertex) {
+            edge.isSelected = true;
+        } else {
+            edge.isSelected = false;
+        }
+    });
+};
 
 
 //-- Game objects
@@ -57,6 +102,11 @@ var Vertex = function(x, y) {
     this.y = y;
     this.radius = standardRadius;
     this.isSelected = false; //unimplemented!
+    this.id = vertexIdCount;
+    vertexIdCount++;
+
+    // update ajacentList
+    adjacentList[this.id] = [];
 
     this.render = function() {
        
@@ -71,37 +121,67 @@ var Vertex = function(x, y) {
         // Draw
         c.beginPath();
         c.arc(this.x, this.y, this.radius, 0,  Math.PI * 2, false);
-        c.fillStyle = 'blue';
+        c.fillStyle = 'rgb('+ this.id + ',0,255)';
         c.fill();
     };
 };
 
+var Edge = function(vertexA, vertexB) {
+    this.vertexA = vertexA;
+    this.vertexB = vertexB;
+    this.isSelected = false; //unimplemented
+    this.lineWidth = edgeStandardWidth;
+
+    // update ajacentList
+    adjacentList[vertexA.id].push(vertexB);
+    adjacentList[vertexB.id].push(vertexA);
+
+    this.render = function() {
+        // Expand or contract the line width based on isSelected
+        if (this.isSelected && this.lineWidth < edgeLargeWidth) {
+            this.lineWidth++;
+        } else if (!this.isSelected && this.lineWidth > edgeStandardWidth) {
+            this.lineWidth--;
+        }
+
+        c.beginPath();
+        c.moveTo(vertexA.x, vertexA.y);
+        c.lineTo(vertexB.x, vertexB.y);
+        c.lineWidth = this.lineWidth;
+        c.stroke();
+    };
+
+};
 
 //-- Game Init
-var topLeft = getPosition(0,0);
-var bottomRight = getPosition(100,100);
-var centerRight = getPosition(100,50);
-var bottomCenter = getPosition(50,100);
-var centerCenter = getPosition(50,50);
-var northWestMidway = getPosition(25,25);
+for (var i = 0; i < 5; i++) {
+    var pos = getPosition(Math.random() * 90 + 5, Math.random() * 90 + 5);
+    vertices.push(new Vertex(pos.x, pos.y));
+}
 
-vertices.push(new Vertex(topLeft.x, topLeft.y));
-vertices.push(new Vertex(bottomRight.x, bottomRight.y));
-vertices.push(new Vertex(centerRight.x, centerRight.y));
-vertices.push(new Vertex(bottomCenter.x, bottomCenter.y));
-vertices.push(new Vertex(centerCenter.x, centerCenter.y));
-vertices.push(new Vertex(northWestMidway.x, northWestMidway.y));
+edges.push(new Edge(vertices[0], vertices[1]));
+edges.push(new Edge(vertices[1], vertices[2]));
+edges.push(new Edge(vertices[2], vertices[0]));
+edges.push(new Edge(vertices[0], vertices[3]));
+edges.push(new Edge(vertices[3], vertices[4]));
 
 
 //-- Game Logic & Animation Loop
 var animationLoop = function() {
     c.clearRect(0, 0, canvas.width, canvas.height); // clear canvas
 
+    edges.forEach(function(edge) {
+        edge.render();
+    });
+
     vertices.forEach(function(vertex) {
         vertex.render();
     });
 
-    requestAnimationFrame(animationLoop);
+
+    // Keep my laptop from burning a hole in my lap
+    setTimeout(requestAnimationFrame.bind(this,animationLoop), 10);
+    //requestAnimationFrame(animationLoop);
 };
 animationLoop();
 
@@ -113,6 +193,30 @@ window.addEventListener('mousemove', function(event) {
     mouseLoc.x = relativePos.x;
     mouseLoc.y = relativePos.y;
 
-    console.log('(' + mouseLoc.x + '),(' + mouseLoc.y + ')');
+    //console.log('(' + mouseLoc.x + '),(' + mouseLoc.y + ')');
 });
 
+window.addEventListener('click', function(event) {
+    // We detect the color under the mouse and use that to determine which node we've clicked
+    // probably not the most typical hit detection technique but hey it actually works pretty darn well
+    // and avoids clever math with overlapping and expanding radius circles
+    var clickPixel = c.getImageData(mouseLoc.x, mouseLoc.y, 1, 1).data;
+
+    //pay attention to the click if it was on a vertice:
+    var r = clickPixel[0]; //our vertice id
+    var g = clickPixel[1]; //should match 0
+    var b = clickPixel[2]; //should match 255
+    if (r < vertices.length && g === 0 && b === 255) {
+        console.log('vertex click detected on id:' + r);
+        //var vertex = getVertexById(r);
+        selectVertexById(r);
+        selectEdgesByVertexId(r);
+        //console.log(vertex);
+    }
+    //todo else if logic here for click on buttons
+    else {
+        selectVertexById(-1);
+        selectEdgesByVertexId(-1);
+    }
+
+});
