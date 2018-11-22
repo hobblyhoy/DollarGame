@@ -15,7 +15,6 @@ canvas.height = container.offsetHeight - paddingPixelBuffer - 1; //-1 necessary 
 canvas.style.border = paddingPixelBuffer/2 + 'px solid black';
 canvas.style.display = 'block';
 // Positioning
-// usage: position . top|center|bottom . left|center|right [[.toAbsolute()]]
 var offsetXY = function(obj, xOffset, yOffset) {
     return {
         x: obj.x + xOffset
@@ -30,28 +29,14 @@ var toRelative = function(obj) {
     return offsetXY(obj, xOffset, yOffset);
 };
 
-var yPositions = {
-    top: 0
-    , center: canvas.height/2
-    , bottom: canvas.height
+// usage: position along x/y axis as a percentage of the canvas dimensions
+// e.g. var bottomCenter = getPosition(50,100);
+var getPosition = function(xPercent, yPercent) {
+    return {
+        x: Math.floor(xPercent * 0.01 * canvas.width)
+        , y: Math.floor(yPercent * 0.01 * canvas.height)
+    };
 };
-var xPositions = {
-    left: 0
-    , center: canvas.width/2
-    , right: canvas.width
-};
-var position = {};
-for (var yKey in yPositions) {
-    for (var xKey in xPositions) {
-        if (!position[yKey]) position[yKey] = {};
-        var relativeCoordinates = {
-            x: Math.floor(xPositions[xKey])
-            ,y: Math.floor(yPositions[yKey])
-        };
-        position[yKey][xKey] = relativeCoordinates;
-        //position[yKey][xKey].toAbsolute = toAbsolute.bind({}, relativeCoordinates);
-    }
-}
 
 
 //-- Constants
@@ -93,13 +78,19 @@ var Vertex = function(x, y) {
 
 
 //-- Game Init
-vertices.push(new Vertex(position.top.left.x, position.top.left.y));
-vertices.push(new Vertex(position.bottom.right.x, position.bottom.right.y));
-vertices.push(new Vertex(position.center.right.x, position.center.right.y));
-vertices.push(new Vertex(position.bottom.center.x, position.bottom.center.y));
+var topLeft = getPosition(0,0);
+var bottomRight = getPosition(100,100);
+var centerRight = getPosition(100,50);
+var bottomCenter = getPosition(50,100);
+var centerCenter = getPosition(50,50);
+var northWestMidway = getPosition(25,25);
 
-
-vertices.push(new Vertex(position.center.center.x, position.center.center.y));
+vertices.push(new Vertex(topLeft.x, topLeft.y));
+vertices.push(new Vertex(bottomRight.x, bottomRight.y));
+vertices.push(new Vertex(centerRight.x, centerRight.y));
+vertices.push(new Vertex(bottomCenter.x, bottomCenter.y));
+vertices.push(new Vertex(centerCenter.x, centerCenter.y));
+vertices.push(new Vertex(northWestMidway.x, northWestMidway.y));
 
 
 //-- Game Logic & Animation Loop
