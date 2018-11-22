@@ -11,53 +11,45 @@ var c = canvas.getContext('2d');
 // Style
 var paddingPixelBuffer = 2;
 canvas.width = container.offsetWidth - paddingPixelBuffer;
-canvas.height = container.offsetHeight - paddingPixelBuffer;
+canvas.height = container.offsetHeight - paddingPixelBuffer - 1; //-1 necessary to keep chrome scroll bar away, idk why
 canvas.style.border = paddingPixelBuffer/2 + 'px solid black';
 canvas.style.display = 'block';
-// Location
-// canvasPosition > (Absolute/Relative) > (Start/Mid/End) > (X/Y)
-var canvasPosition = {
-    // absolute: {
-    //     top: {
-    //         left: Math.floor(canvasBoundingRect.left)
-    //         , center: adf
-    //         , right: Math.floor(canvasBoundingRect.top)
-    //     }, center: {
-    //         left: Math.floor((canvasBoundingRect.right - canvasBoundingRect.left)/2)
-    //         , center: asdf
-    //         , right: Math.floor((canvasBoundingRect.bottom - canvasBoundingRect.top)/2)
-    //     }, end: {
+// Positioning
+// usage: position . top|center|bottom . left|center|right [[.toAbsolute()]]
+var offsetXY = function(obj, xOffset, yOffset) {
+    return {
+        x: obj.x + xOffset
+        , y: obj.y + yOffset
+    };    
 };
 
-var xPositions = {
+// we use this down below on the mouse event listener which works in absolute units
+var toRelative = function(obj) {
+    var xOffset = -Math.floor(canvasBoundingRect.left);
+    var yOffset = -Math.floor(canvasBoundingRect.top);
+    return offsetXY(obj, xOffset, yOffset);
+};
+
+var yPositions = {
     top: 0
     , center: canvas.height/2
     , bottom: canvas.height
 };
-var yPositions = {
+var xPositions = {
     left: 0
     , center: canvas.width/2
     , right: canvas.width
 };
-var toAbsolute = function (obj) {
-    if (obj.x === undefined || obj.y === undefined) throw 'bad obj'
-    return {
-        x: obj.x + Math.floor(canvasBoundingRect.top)
-        , y: obj.y + Math.floor(canvasBoundingRect.left)
-    };
-};
-var toRelative = //stub
-
-for (var xKey in xPositions) {
-    for (var yKey in yPositions) {
-        if (!canvasPosition[xKey]) canvasPosition[xKey] = {};
+var position = {};
+for (var yKey in yPositions) {
+    for (var xKey in xPositions) {
+        if (!position[yKey]) position[yKey] = {};
         var relativeCoordinates = {
-            x: xPositions[xKey]
-            ,y: yPositions[yKey]
+            x: Math.floor(xPositions[xKey])
+            ,y: Math.floor(yPositions[yKey])
         };
-        canvasPosition[xKey][yKey] = relativeCoordinates;
-        canvasPosition[xKey][yKey].toAbsolute = toAbsolute.bind(this);
-
+        position[yKey][xKey] = relativeCoordinates;
+        //position[yKey][xKey].toAbsolute = toAbsolute.bind({}, relativeCoordinates);
     }
 }
 
@@ -101,10 +93,13 @@ var Vertex = function(x, y) {
 
 
 //-- Game Init
-vertices.push(new Vertex(0, 0));
-vertices.push(new Vertex(100, 100));
-// vertices.push(new Vertex(canvasPosition.relative.mid.x, canvasPosition.relative.mid.y));
-// vertices.push(new Vertex(canvasPosition.relative.end.x, canvasPosition.relative.end.y));
+vertices.push(new Vertex(position.top.left.x, position.top.left.y));
+vertices.push(new Vertex(position.bottom.right.x, position.bottom.right.y));
+vertices.push(new Vertex(position.center.right.x, position.center.right.y));
+vertices.push(new Vertex(position.bottom.center.x, position.bottom.center.y));
+
+
+vertices.push(new Vertex(position.center.center.x, position.center.center.y));
 
 
 //-- Game Logic & Animation Loop
@@ -122,11 +117,11 @@ animationLoop();
 
 //-- Event Listeners
 window.addEventListener('mousemove', function(event) {
-    // event gives x/y coordinate on the page but we need it relative to the canvas
-    var absolutePos = toRelative(event);
-    mouseLoc.x = absolutePos.x;
-    mouseLoc.y = absolutePos.y;
+    // event gives absolute x/y coordinate on the page but we need it relative to the canvas
+    var relativePos = toRelative(event);
+    mouseLoc.x = relativePos.x;
+    mouseLoc.y = relativePos.y;
 
-    //console.log('(' + mouseLoc.x + '),(' + mouseLoc.y + ')');
+    console.log('(' + mouseLoc.x + '),(' + mouseLoc.y + ')');
 });
 
