@@ -211,7 +211,7 @@ var ActionButton = function(x, y, width, height, color, content, action) {
 //-- Game Init
 for (var i = 0; i < 5; i++) {
     var pos = getPosition(Math.random() * 90 + 5, Math.random() * 90 + 5);
-    vertices.push(new Vertex(pos.x, pos.y, -3));
+    vertices.push(new Vertex(pos.x, pos.y, -i));
 }
 
 edges.push(new Edge(vertices[0], vertices[1]));
@@ -265,12 +265,25 @@ window.addEventListener('click', function(event) {
     // We detect the color under the mouse and use that to determine which node we've clicked
     // probably not the most typical hit detection technique but hey it actually works pretty darn well
     // and avoids clever math with overlapping and expanding radius circles
-    var clickPixel = c.getImageData(mouseLoc.x, mouseLoc.y, 1, 1).data;
+    //var clickPixel = c.getImageData(mouseLoc.x, mouseLoc.y, 1, 1).data;
+
+
+    // find the closest point to the click
+    var closestVertex = { distance: Number.POSITIVE_INFINITY, vertex: null };
+    vertices.forEach(function(vertex) {
+        var distance = Math.sqrt(Math.pow(mouseLoc.x - vertex.x,2) + Math.pow(mouseLoc.y - vertex.y, 2));
+        if (distance < closestVertex.distance) {
+            closestVertex.distance = distance;
+            closestVertex.vertex = vertex;
+        }
+    });
+    // check to see if it's within the range
+
 
     //pay attention to the click if it was on a vertice:
-    var r = clickPixel[0]; //our vertice id
-    var g = clickPixel[1]; //should match 0
-    var b = clickPixel[2]; //should match 255
+    // var r = clickPixel[0]; //our vertice id
+    // var g = clickPixel[1]; //should match 0
+    // var b = clickPixel[2]; //should match 255
     var isMousedOverPlus = actionButtons[0].isMousedOver();
     var isMousedOverMinus = actionButtons[1].isMousedOver();
     if (actionButtons[0].isShown && (isMousedOverPlus || isMousedOverMinus) ) {
@@ -282,11 +295,10 @@ window.addEventListener('click', function(event) {
             // todo isMousedOverMinus action
             console.log('Minus click');
         }
-    } else if (r < vertices.length && g === 0 && b === 255) {
-        console.log('vertex click detected on id:' + r);
-        //var vertex = getVertexById(r);
-        selectVertexById(r);
-        selectEdgesByVertexId(r);
+    } else if (closestVertex.distance <= largeRadius) {
+        console.log('vertex click detected on id:' + closestVertex.vertex.id);
+        selectVertexById(closestVertex.vertex.id);
+        selectEdgesByVertexId(closestVertex.vertex.id);
         toggleButtons(true);
         //console.log(vertex);
     } else {
