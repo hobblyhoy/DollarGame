@@ -2,7 +2,8 @@
 /* global document,window,console,requestAnimationFrame,setTimeout*/
 /* jshint -W097,-W014 */ //turn off use strict and comma styling warnings
 
-//-- Canvas init
+
+//----- Canvas init
 // Handles
 var canvas = document.querySelector('canvas');
 var container = document.querySelector('#canvas-container');
@@ -45,16 +46,16 @@ var getSize = function(widthPercent, heightPercent) {
 };
 
 
-//-- Constants
-var standardRadius = 30;
-var largeRadius = 40;
-var edgeStandardWidth = 3;
-var edgeLargeWidth = 10;
-var buttonSize = 40;
-var buttonBuffer = 20;
+//----- Constants
+var STANDARD_RADIUS = 30;
+var LARGE_RADIUS = 40;
+var EDGE_STANDARD_WIDTH = 3;
+var EDGE_LARGE_WIDTH = 10;
+var BUTTON_SIZE = 40;
+var BUTTON_BUFFER = 20;
 
 
-//-- Game State
+//----- Game State
 var mouseLoc, edges, vertices, adjacentList, vertexIdCount, actionButtons, gameHasStarted; // last known mouse location relative to canvas
 var resetGameState = function() {
     mouseLoc = {x:null, y: null}; // last known mouse location relative to canvas
@@ -66,7 +67,8 @@ var resetGameState = function() {
     gameHasStarted = false;    
 };
 
-//-- Helper Utils
+
+//----- Helper Utils
 var getVertexById = function(id) {
     for (var i = 0; i < vertices.length; i++) {
         if (vertices[i].id === id) return vertices[i];
@@ -123,11 +125,11 @@ var getSelectedVertex = function() {
 };
 
 
-//-- Game objects
+//----- Game objects
 var Vertex = function(x, y, value) {
     this.x = x;
     this.y = y;
-    this.radius = standardRadius;
+    this.radius = STANDARD_RADIUS;
     this.isSelected = false; //unimplemented!
     this.id = vertexIdCount;
     this.value = value;
@@ -138,9 +140,9 @@ var Vertex = function(x, y, value) {
     this.render = function() {
         // Expand or contract the radius on mouse over OR selection
         var isMousedOver = Math.abs(mouseLoc.x - this.x) < this.radius && Math.abs(mouseLoc.y - this.y) < this.radius;
-        if ((this.isSelected||isMousedOver) && this.radius < largeRadius) {
+        if ((this.isSelected||isMousedOver) && this.radius < LARGE_RADIUS) {
             this.radius++;
-        } else if (!this.isSelected && !isMousedOver && this.radius > standardRadius) {
+        } else if (!this.isSelected && !isMousedOver && this.radius > STANDARD_RADIUS) {
             this.radius--;
         }
 
@@ -180,7 +182,7 @@ var Edge = function(vertexA, vertexB) {
     this.vertexA = vertexA;
     this.vertexB = vertexB;
     this.isSelected = false; //unimplemented
-    this.lineWidth = edgeStandardWidth;
+    this.lineWidth = EDGE_STANDARD_WIDTH;
 
     // update ajacentList
     adjacentList[vertexA.id].push(vertexB);
@@ -188,9 +190,9 @@ var Edge = function(vertexA, vertexB) {
 
     this.render = function() {
         // Expand or contract the line width based on isSelected
-        if (this.isSelected && this.lineWidth < edgeLargeWidth) {
+        if (this.isSelected && this.lineWidth < EDGE_LARGE_WIDTH) {
             this.lineWidth++;
-        } else if (!this.isSelected && this.lineWidth > edgeStandardWidth) {
+        } else if (!this.isSelected && this.lineWidth > EDGE_STANDARD_WIDTH) {
             this.lineWidth--;
         }
 
@@ -237,7 +239,8 @@ var ActionButton = function(x, y, width, height, color, content, action) {
     };
 };
 
-//-- Animation Loop
+
+//----- Animation Loop
 var animationLoop = function() {
     c.clearRect(0, 0, canvas.width, canvas.height); // clear canvas
 
@@ -260,7 +263,7 @@ var animationLoop = function() {
 };
 
 
-//-- Event Listeners
+//----- Event Listeners
 window.addEventListener('mousemove', function(event) {
     if (!gameHasStarted) return;
     // event gives absolute x/y coordinate on the page but we need it relative to the canvas
@@ -300,7 +303,7 @@ window.addEventListener('click', function(event) {
         selectedVertex.value += selectedVertexSiblings.length * modifier * -1;
 
     // if: click on vertex
-    } else if (closestVertex.distance <= largeRadius) {
+    } else if (closestVertex.distance <= LARGE_RADIUS) {
         console.log('vertex click detected on id:' + closestVertex.vertex.id);
         selectVertexById(closestVertex.vertex.id);
         selectEdgesByVertexId(closestVertex.vertex.id);
@@ -335,8 +338,8 @@ var createGame = function() {
     edges.push(new Edge(vertices[0], vertices[3]));
     edges.push(new Edge(vertices[3], vertices[4]));
 
-    actionButtons.push(new ActionButton(buttonBuffer, canvas.height - buttonSize - buttonBuffer, buttonSize, buttonSize, 'green', '+', null));
-    actionButtons.push(new ActionButton(buttonBuffer*2+buttonSize, canvas.height - buttonSize - buttonBuffer, buttonSize, buttonSize, 'red', '-', null));
+    actionButtons.push(new ActionButton(BUTTON_BUFFER, canvas.height - BUTTON_SIZE - BUTTON_BUFFER, BUTTON_SIZE, BUTTON_SIZE, 'green', '+', null));
+    actionButtons.push(new ActionButton(BUTTON_BUFFER*2+BUTTON_SIZE, canvas.height - BUTTON_SIZE - BUTTON_BUFFER, BUTTON_SIZE, BUTTON_SIZE, 'red', '-', null));
     
     gameHasStarted = true;
     animationLoop();
