@@ -109,6 +109,14 @@ var toggleButtons = function(isShown) {
     });
 };
 
+var getSelectedVertex = function() {
+    for (var i = 0; i < vertices.length; i++) {
+        if (vertices[i].isSelected === true) return vertices[i];
+    }
+
+    throw 'error, no vertice selected';
+};
+
 
 //-- Game objects
 var Vertex = function(x, y, value) {
@@ -262,13 +270,7 @@ window.addEventListener('mousemove', function(event) {
 });
 
 window.addEventListener('click', function(event) {
-    // We detect the color under the mouse and use that to determine which node we've clicked
-    // probably not the most typical hit detection technique but hey it actually works pretty darn well
-    // and avoids clever math with overlapping and expanding radius circles
-    //var clickPixel = c.getImageData(mouseLoc.x, mouseLoc.y, 1, 1).data;
-
-
-    // find the closest point to the click
+    // determine closest vertex 
     var closestVertex = { distance: Number.POSITIVE_INFINITY, vertex: null };
     vertices.forEach(function(vertex) {
         var distance = Math.sqrt(Math.pow(mouseLoc.x - vertex.x,2) + Math.pow(mouseLoc.y - vertex.y, 2));
@@ -277,30 +279,30 @@ window.addEventListener('click', function(event) {
             closestVertex.vertex = vertex;
         }
     });
-    // check to see if it's within the range
 
-
-    //pay attention to the click if it was on a vertice:
-    // var r = clickPixel[0]; //our vertice id
-    // var g = clickPixel[1]; //should match 0
-    // var b = clickPixel[2]; //should match 255
+    // check if the cursors is over either of our action buttons
     var isMousedOverPlus = actionButtons[0].isMousedOver();
     var isMousedOverMinus = actionButtons[1].isMousedOver();
+    // if: click on action buttons
     if (actionButtons[0].isShown && (isMousedOverPlus || isMousedOverMinus) ) {
-        //TOOD handle click 
-        if (isMousedOverPlus) {
-            // todo isMousedOverPlus action
-            console.log('Plus click');
-        } else if (isMousedOverMinus) {
-            // todo isMousedOverMinus action
-            console.log('Minus click');
-        }
+        var selectedVertex = getSelectedVertex();
+        var selectedVertexSiblings = adjacentList[selectedVertex.id];
+        var modifier = isMousedOverPlus ? 1 : -1;
+
+        // on a plus click you're giving that vertex's "points" to the other vertices
+        // on a minus click you're pulling in the other vertices "points" to the selected vertex.
+        selectedVertexSiblings.forEach(function(vertex) {
+            vertex.value += modifier;
+        });
+        selectedVertex.value += selectedVertexSiblings.length * modifier * -1;
+
+    // if: click on vertex
     } else if (closestVertex.distance <= largeRadius) {
         console.log('vertex click detected on id:' + closestVertex.vertex.id);
         selectVertexById(closestVertex.vertex.id);
         selectEdgesByVertexId(closestVertex.vertex.id);
         toggleButtons(true);
-        //console.log(vertex);
+    // if: click on whitespace
     } else {
         selectVertexById(-1);
         selectEdgesByVertexId(-1);
