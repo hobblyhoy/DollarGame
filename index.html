@@ -11,7 +11,15 @@
 </head>
 <body>
     <div style="height:10vh;">
-        Fill in the stuffs
+        <div>
+            <input type="number" id="vertices" value="7"> vertices count
+        </div>
+        <div>
+            <input type="number" id="net-money"> net $ (the larger the number the easier the game)
+        </div>
+        <div>
+            <button onclick="createGame()">Create Game</button>
+        </div>
     </div>
     <div id="canvas-container" style="height:90vh;">
         <canvas></canvas>

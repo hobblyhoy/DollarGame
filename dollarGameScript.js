@@ -50,16 +50,21 @@ var standardRadius = 30;
 var largeRadius = 40;
 var edgeStandardWidth = 3;
 var edgeLargeWidth = 10;
+var buttonSize = 40;
+var buttonBuffer = 20;
 
 
 //-- Game State
-var mouseLoc = {x:null, y: null}; // last known mouse location relative to canvas
-var edges = [];
-var vertices = [];
-var adjacentList = {};
-var vertexIdCount = 0;
-var actionButtons = [];
-
+var mouseLoc, edges, vertices, adjacentList, vertexIdCount, actionButtons, gameHasStarted; // last known mouse location relative to canvas
+var resetGameState = function() {
+    mouseLoc = {x:null, y: null}; // last known mouse location relative to canvas
+    edges = [];
+    vertices = [];
+    adjacentList = {};
+    vertexIdCount = 0;
+    actionButtons = [];
+    gameHasStarted = false;    
+};
 
 //-- Helper Utils
 var getVertexById = function(id) {
@@ -130,8 +135,6 @@ var Vertex = function(x, y, value) {
     vertexIdCount++; // increment so the next id is unique
     adjacentList[this.id] = []; // update ajacentList
 
-
-
     this.render = function() {
         // Expand or contract the radius on mouse over OR selection
         var isMousedOver = Math.abs(mouseLoc.x - this.x) < this.radius && Math.abs(mouseLoc.y - this.y) < this.radius;
@@ -141,17 +144,35 @@ var Vertex = function(x, y, value) {
             this.radius--;
         }
 
+        //var color = 'rgb('+ (i*17)%256  + ',0,255)';
+        // color changes happen logarithmically. 
+        // colorShift moves 120 => 60 => 30 => ... => 0
+        var color, shift;
+        if (this.value >= 0) {
+            shift = Math.floor(120 / (this.value + 1)) + 80;
+            // green should run (0,200,0) => (0, 80, 0);
+            color = 'rgb(0,' + shift + ',0)';
+        } else {
+            shift = Math.floor(120 / (this.value * -1));
+            // red should run from (255,120,120) => (255,0,0)
+            color = 'rgb(255,' + shift + ',' + shift + ')';
+        }
+
         // Draw
         c.beginPath();
         c.arc(this.x, this.y, this.radius, 0,  Math.PI * 2, false);
-        c.fillStyle = 'rgb('+ this.id + ',0,255)';
+        //c.fillStyle = 'rgb('+ this.id + ',0,255)';
+        c.fillStyle = color;
         c.fill();
 
         c.font = '40px san-serif';
-        c.fillStyle = 'white'; //AHH creates issues on the click handler :/
         c.textAlign = 'center';
-        c.textBaseline = 'middle';   
-        c.fillText(this.value, this.x, this.y);         
+        c.textBaseline = 'middle';
+        //c.lineWidth = 2;
+        //c.strokeStyle = 'black';
+        //c.strokeText(this.value, this.x, this.y);
+        c.fillStyle = 'white';
+        c.fillText(this.value, this.x, this.y);
     };
 };
 
@@ -216,25 +237,6 @@ var ActionButton = function(x, y, width, height, color, content, action) {
     };
 };
 
-//-- Game Init
-for (var i = 0; i < 5; i++) {
-    var pos = getPosition(Math.random() * 90 + 5, Math.random() * 90 + 5);
-    vertices.push(new Vertex(pos.x, pos.y, -i));
-}
-
-edges.push(new Edge(vertices[0], vertices[1]));
-edges.push(new Edge(vertices[1], vertices[2]));
-edges.push(new Edge(vertices[2], vertices[0]));
-edges.push(new Edge(vertices[0], vertices[3]));
-edges.push(new Edge(vertices[3], vertices[4]));
-
-//var button1Pos = getPosition(10,90);
-var buttonSize = 40;
-var buttonBuffer = 20;
-actionButtons.push(new ActionButton(buttonBuffer, canvas.height - buttonSize - buttonBuffer, buttonSize, buttonSize, 'green', '+', null));
-actionButtons.push(new ActionButton(buttonBuffer*2+buttonSize, canvas.height - buttonSize - buttonBuffer, buttonSize, buttonSize, 'red', '-', null));
-
-
 //-- Animation Loop
 var animationLoop = function() {
     c.clearRect(0, 0, canvas.width, canvas.height); // clear canvas
@@ -256,11 +258,11 @@ var animationLoop = function() {
     setTimeout(requestAnimationFrame.bind(this,animationLoop), 10);
     //requestAnimationFrame(animationLoop);
 };
-animationLoop();
 
 
 //-- Event Listeners
 window.addEventListener('mousemove', function(event) {
+    if (!gameHasStarted) return;
     // event gives absolute x/y coordinate on the page but we need it relative to the canvas
     var relativePos = toRelative(event);
     mouseLoc.x = relativePos.x;
@@ -270,6 +272,7 @@ window.addEventListener('mousemove', function(event) {
 });
 
 window.addEventListener('click', function(event) {
+    if (!gameHasStarted) return;
     // determine closest vertex 
     var closestVertex = { distance: Number.POSITIVE_INFINITY, vertex: null };
     vertices.forEach(function(vertex) {
@@ -308,5 +311,33 @@ window.addEventListener('click', function(event) {
         selectEdgesByVertexId(-1);
         toggleButtons(false);
     }
-
 });
+
+//document.getElementById('create-game')
+//-- Game Init
+var createGame = function() {
+    resetGameState();
+
+    var userVertices = document.getElementById('vertices').valueAsNumber;
+    var userNetMoney = document.getElementById('net-money').valueAsNumber;
+
+    // If I catch a wild hair I'll go back and do user input checks
+    // but this project is all about Canvas so ¯\_(ツ)_/¯
+
+    for (var i = 0; i < userVertices; i++) {
+        var pos = getPosition(Math.random() * 90 + 5, Math.random() * 90 + 5);
+        vertices.push(new Vertex(pos.x, pos.y, i));
+    }
+
+    edges.push(new Edge(vertices[0], vertices[1]));
+    edges.push(new Edge(vertices[1], vertices[2]));
+    edges.push(new Edge(vertices[2], vertices[0]));
+    edges.push(new Edge(vertices[0], vertices[3]));
+    edges.push(new Edge(vertices[3], vertices[4]));
+
+    actionButtons.push(new ActionButton(buttonBuffer, canvas.height - buttonSize - buttonBuffer, buttonSize, buttonSize, 'green', '+', null));
+    actionButtons.push(new ActionButton(buttonBuffer*2+buttonSize, canvas.height - buttonSize - buttonBuffer, buttonSize, buttonSize, 'red', '-', null));
+    
+    gameHasStarted = true;
+    animationLoop();
+};
