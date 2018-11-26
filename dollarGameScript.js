@@ -124,6 +124,11 @@ var getSelectedVertex = function() {
     throw 'error, no vertice selected';
 };
 
+// min and max are inclusive
+var getRandomInt = function(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+};
+
 
 //----- Game objects
 var Vertex = function(x, y, value) {
@@ -322,21 +327,81 @@ var createGame = function() {
     resetGameState();
 
     var userVertices = document.getElementById('vertices').valueAsNumber;
+    var userEdges = document.getElementById('edges').valueAsNumber;
     var userNetMoney = document.getElementById('net-money').valueAsNumber;
 
     // If I catch a wild hair I'll go back and do user input checks
     // but this project is all about Canvas so ¯\_(ツ)_/¯
 
+
+    // Game theory notes:
+    // to guarntee its winnable:
+    // net$ >= 0 && net$ >= genus
+    // genus == edges - vertices + 1;
+    // in some cases a game is still winnable even if the 2nd criteria is not met!
     for (var i = 0; i < userVertices; i++) {
         var pos = getPosition(Math.random() * 90 + 5, Math.random() * 90 + 5);
         vertices.push(new Vertex(pos.x, pos.y, i));
     }
 
-    edges.push(new Edge(vertices[0], vertices[1]));
-    edges.push(new Edge(vertices[1], vertices[2]));
-    edges.push(new Edge(vertices[2], vertices[0]));
-    edges.push(new Edge(vertices[0], vertices[3]));
-    edges.push(new Edge(vertices[3], vertices[4]));
+    // minEdges = a single line touching each node once
+    var minimumEdges = vertices.length - 1;
+    // maxEdges = summation from 1 to vertices count - 1. Thx Gauss for the shortcut.
+    var maximumEdges = ((vertices.length - 1) / 2) * vertices.length;
+    if (userEdges > maximumEdges || userEdges < minimumEdges) {
+        throw 'TODO turn this error into UI feedback for the user about bad input at some point';
+    }
+
+
+    // Any graph with all vertices connected can always be resolved down 
+    // to a single line of connected vertices by removing edges.
+    // Since we always want all vertices connected we may as well start there.
+    // Theres probably a cleverer way to do that but today I want to learn Canvas, not graph theory.
+    for (var i = 1; i < vertices.length; i++) {
+        edges.push(new Edge(vertices[i-1], vertices[i]));
+    }
+
+    // Now we need to construct the remaining edges
+    // Note: we dont want to use traversal methods because that can lead to clumping of 
+    // edges localized around our starting vertex.
+
+    // blindly add all vertices to our list of potential Edge starting points
+    // we'll whittle it down later as necessary.
+    var potentialStartVertices = vertices.slice();
+
+    var remainingEdgesToPlaceCount = userEdges - edges.length;
+    while (remainingEdgesToPlaceCount > 0) {
+        // randomly choose a vertex from our list of potentialStartVertices.
+        var startVertexIndex = getRandomInt(0, potentialStartVertices.length - 1);
+        var startVertex = potentialStartVertices[startVertexIndex];
+
+        // Generate a list of potential end vertices for our edges. Basically:
+        //  (all vertecies) - (adjacent vertices) - (this vertex) = (potential end vertices)
+        // Note: for efficiency we could extract this to an array outside the loop.
+        // However, real world perf difference is entirely negligble so I wont.
+        var potentialEndVertices = vertices.filter(function(vertex) {
+            return startVertex !== vertex && adjacentList[startVertex.id].indexOf(vertex) < 0;
+        });
+
+        if (potentialEndVertices.length > 0) {
+            // randomly choose a vertex from the list of possible connections
+            var endVertexIndex = getRandomInt(0, potentialEndVertices.length - 1);
+            var endVertex = potentialEndVertices[endVertexIndex];
+
+            // Hurray! we now have our new random generated edge
+            edges.push(new Edge(startVertex, endVertex));
+            remainingEdgesToPlaceCount--;
+        } else {
+            // If we didn't find any potential end vertices this vertex already has
+            // an edge to every other vertex.
+            // Remove it from the potentialStartVertices list so we dont try to find
+            // any more edges for it in the future.
+            potentialStartVertices = potentialStartVertices.filter(function(vertex) {
+                return vertex !== startVertex;
+            });
+        }
+    }
+
 
     actionButtons.push(new ActionButton(BUTTON_BUFFER, canvas.height - BUTTON_SIZE - BUTTON_BUFFER, BUTTON_SIZE, BUTTON_SIZE, 'green', '+', null));
     actionButtons.push(new ActionButton(BUTTON_BUFFER*2+BUTTON_SIZE, canvas.height - BUTTON_SIZE - BUTTON_BUFFER, BUTTON_SIZE, BUTTON_SIZE, 'red', '-', null));
