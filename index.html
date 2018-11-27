@@ -12,13 +12,17 @@
 <body>
     <div style="height:15vh; overflow: auto;">
         <div>
-            <input type="number" id="vertices" value="7"> vertices count
+            <span id="warning" style="color: red"></span>
+            <span id="win" style="color: green"></span>
+        </div>
+        <div>
+            <input type="number" id="vertices" value="5"> vertices count
         </div>
         <div>
             <input type="number" id="edges" value="6"> edges count (the larger the number the harder the game)
         </div>        
         <div>
-            <input type="number" id="net-money"> net $ (the larger the number the easier the game)
+            <input type="number" id="net-money" value="3"> net $ (the larger the number the easier the game)
         </div>
         <div>
             <button onclick="createGame()">Create Game</button>
@@ -29,5 +33,4 @@
     </div>
     <script src="dollarGameScript.js"></script>
 </body>
-
 </html>

@@ -131,13 +131,13 @@ var getRandomInt = function(min, max) {
 
 
 //----- Game objects
-var Vertex = function(x, y, value) {
+var Vertex = function(x, y, money) {
     this.x = x;
     this.y = y;
     this.radius = STANDARD_RADIUS;
     this.isSelected = false; //unimplemented!
     this.id = vertexIdCount;
-    this.value = value;
+    this.money = money;
     
     vertexIdCount++; // increment so the next id is unique
     adjacentList[this.id] = []; // update ajacentList
@@ -155,12 +155,12 @@ var Vertex = function(x, y, value) {
         // color changes happen logarithmically. 
         // colorShift moves 120 => 60 => 30 => ... => 0
         var color, shift;
-        if (this.value >= 0) {
-            shift = Math.floor(120 / (this.value + 1)) + 80;
+        if (this.money >= 0) {
+            shift = Math.floor(120 / (this.money + 1)) + 80;
             // green should run (0,200,0) => (0, 80, 0);
             color = 'rgb(0,' + shift + ',0)';
         } else {
-            shift = Math.floor(120 / (this.value * -1));
+            shift = Math.floor(120 / (this.money * -1));
             // red should run from (255,120,120) => (255,0,0)
             color = 'rgb(255,' + shift + ',' + shift + ')';
         }
@@ -177,9 +177,9 @@ var Vertex = function(x, y, value) {
         c.textBaseline = 'middle';
         //c.lineWidth = 2;
         //c.strokeStyle = 'black';
-        //c.strokeText(this.value, this.x, this.y);
+        //c.strokeText(this.money, this.x, this.y);
         c.fillStyle = 'white';
-        c.fillText(this.value, this.x, this.y);
+        c.fillText(this.money, this.x, this.y);
     };
 };
 
@@ -300,12 +300,22 @@ window.addEventListener('click', function(event) {
         var selectedVertexSiblings = adjacentList[selectedVertex.id];
         var modifier = isMousedOverPlus ? 1 : -1;
 
-        // on a plus click you're giving that vertex's "points" to the other vertices
-        // on a minus click you're pulling in the other vertices "points" to the selected vertex.
+        // on a plus click you're giving that vertex's money to the other vertices
+        // on a minus click you're pulling in the other vertices money to the selected vertex.
         selectedVertexSiblings.forEach(function(vertex) {
-            vertex.value += modifier;
+            vertex.money += modifier;
         });
-        selectedVertex.value += selectedVertexSiblings.length * modifier * -1;
+        selectedVertex.money += selectedVertexSiblings.length * modifier * -1;
+
+        // check to see if the user just won the game
+        var aVertexUnderZero = vertices.find(function(vertex) {
+            return vertex.money < 0;
+        });
+        if (!aVertexUnderZero) {
+            document.getElementById('win').innerText = "You won!";
+        } else {
+            document.getElementById('win').innerText = "";
+        }
 
     // if: click on vertex
     } else if (closestVertex.distance <= LARGE_RADIUS) {
@@ -321,7 +331,6 @@ window.addEventListener('click', function(event) {
     }
 });
 
-//document.getElementById('create-game')
 //-- Game Init
 var createGame = function() {
     resetGameState();
@@ -333,17 +342,25 @@ var createGame = function() {
     // If I catch a wild hair I'll go back and do user input checks
     // but this project is all about Canvas so ¯\_(ツ)_/¯
 
-
-    // Game theory notes:
-    // to guarntee its winnable:
-    // net$ >= 0 && net$ >= genus
-    // genus == edges - vertices + 1;
-    // in some cases a game is still winnable even if the 2nd criteria is not met!
+    // Build Vertices
+    var runningNetMoney = 0;
     for (var i = 0; i < userVertices; i++) {
-        var pos = getPosition(Math.random() * 90 + 5, Math.random() * 90 + 5);
-        vertices.push(new Vertex(pos.x, pos.y, i));
+        var pos = getPosition(getRandomInt(5,95), getRandomInt(5,85));
+        // random game mechanic choice- 
+        // the more vertices the more crazy we get with how the money is divied up
+        var money;
+        if (i < userVertices - 1) {
+            money = getRandomInt(userNetMoney-userVertices, userNetMoney+userVertices) // avg to userNetMoney.
+            runningNetMoney += money;
+        } else {
+            money = userNetMoney - runningNetMoney;
+        }
+
+        vertices.push(new Vertex(pos.x, pos.y, money));
+        //vertices.push(new Vertex());
     }
 
+    // Build Edges
     // minEdges = a single line touching each node once
     var minimumEdges = vertices.length - 1;
     // maxEdges = summation from 1 to vertices count - 1. Thx Gauss for the shortcut.
@@ -402,10 +419,21 @@ var createGame = function() {
         }
     }
 
-
+    // Build Action Buttons
     actionButtons.push(new ActionButton(BUTTON_BUFFER, canvas.height - BUTTON_SIZE - BUTTON_BUFFER, BUTTON_SIZE, BUTTON_SIZE, 'green', '+', null));
     actionButtons.push(new ActionButton(BUTTON_BUFFER*2+BUTTON_SIZE, canvas.height - BUTTON_SIZE - BUTTON_BUFFER, BUTTON_SIZE, BUTTON_SIZE, 'red', '-', null));
     
+    // Display warning if necessary
+    var genus = edges.length - vertices.length + 1;
+    var warningEl = document.getElementById('warning');
+    if (userNetMoney < 0) {
+        warningEl.innerText = 'This game isn\'t winnable! (net $ must be > 0)';
+    } else if (userNetMoney <= genus) {
+        warningEl.innerText = 'This game might not be winnable! (net $ (' + userNetMoney + ') should be greater than genus (' + genus + ')'; 
+    } else {
+        warningEl.innerText = ''; //clear it on game rerun
+    }
+
     gameHasStarted = true;
     animationLoop();
 };
