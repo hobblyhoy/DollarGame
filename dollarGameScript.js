@@ -56,7 +56,7 @@ var BUTTON_BUFFER = 20;
 
 
 //----- Game State
-var mouseLoc, edges, vertices, adjacentList, vertexIdCount, actionButtons, gameHasStarted; // last known mouse location relative to canvas
+var mouseLoc, edges, vertices, adjacentList, vertexIdCount, actionButtons, gameHasStarted, warningText, winText;
 var resetGameState = function() {
     mouseLoc = {x:null, y: null}; // last known mouse location relative to canvas
     edges = [];
@@ -64,7 +64,7 @@ var resetGameState = function() {
     adjacentList = {};
     vertexIdCount = 0;
     actionButtons = [];
-    gameHasStarted = false;    
+    gameHasStarted = false;
 };
 
 
@@ -261,12 +261,23 @@ var animationLoop = function() {
         actionButton.render();
     });
 
-
     // Keep my laptop from burning a hole in my lap
-    setTimeout(requestAnimationFrame.bind(this,animationLoop), 10);
+    setTimeout(requestAnimationFrame.bind(this,animationLoop), 20);
     //requestAnimationFrame(animationLoop);
 };
 
+var alertTextLoop = function(lastWarningText, lastWinText) {
+    if (warningText !== lastWarningText && typeof warningText === 'string') {
+        document.getElementById('warning').innerText = warningText;
+    }
+
+    if (winText !== lastWinText && typeof winText === 'string') {
+        document.getElementById('win').innerText = winText;
+    }
+
+    setTimeout(alertTextLoop.bind({}, warningText, winText), 50);
+};
+alertTextLoop();
 
 //----- Event Listeners
 window.addEventListener('mousemove', function(event) {
@@ -312,9 +323,9 @@ window.addEventListener('click', function(event) {
             return vertex.money < 0;
         });
         if (!aVertexUnderZero) {
-            document.getElementById('win').innerText = "You won!";
+            winText = "You won!";
         } else {
-            document.getElementById('win').innerText = "";
+            winText = "";
         }
 
     // if: click on vertex
@@ -335,6 +346,7 @@ window.addEventListener('click', function(event) {
 var createGame = function() {
     resetGameState();
 
+    // gather user input
     var userVertices = document.getElementById('vertices').valueAsNumber;
     var userEdges = document.getElementById('edges').valueAsNumber;
     var userNetMoney = document.getElementById('net-money').valueAsNumber;
@@ -350,14 +362,13 @@ var createGame = function() {
         // the more vertices the more crazy we get with how the money is divied up
         var money;
         if (i < userVertices - 1) {
-            money = getRandomInt(userNetMoney-userVertices, userNetMoney+userVertices) // avg to userNetMoney.
+            money = getRandomInt(userNetMoney-userVertices, userNetMoney+userVertices); // avg to userNetMoney.
             runningNetMoney += money;
         } else {
             money = userNetMoney - runningNetMoney;
         }
 
         vertices.push(new Vertex(pos.x, pos.y, money));
-        //vertices.push(new Vertex());
     }
 
     // Build Edges
@@ -366,7 +377,10 @@ var createGame = function() {
     // maxEdges = summation from 1 to vertices count - 1. Thx Gauss for the shortcut.
     var maximumEdges = ((vertices.length - 1) / 2) * vertices.length;
     if (userEdges > maximumEdges || userEdges < minimumEdges) {
-        throw 'TODO turn this error into UI feedback for the user about bad input at some point';
+        warningText = 'Must have between ' + minimumEdges + ' and ' + maximumEdges + ' edges!'
+        throw 'Bad edge count';
+    } else {
+        warningText = '';
     }
 
 
@@ -425,13 +439,12 @@ var createGame = function() {
     
     // Display warning if necessary
     var genus = edges.length - vertices.length + 1;
-    var warningEl = document.getElementById('warning');
     if (userNetMoney < 0) {
-        warningEl.innerText = 'This game isn\'t winnable! (net $ must be > 0)';
+        warningText = 'This game isn\'t winnable! (net $ must be > 0)';
     } else if (userNetMoney < genus) {
-        warningEl.innerText = 'This game might not be winnable! (net $ (' + userNetMoney + ') should be greater than or equal to the genus (' + genus + ')'; 
+        warningText = 'This game might not be winnable! (net $ (' + userNetMoney + ') should be greater than or equal to the genus (' + genus + ')'; 
     } else {
-        warningEl.innerText = ''; //clear it on game rerun
+        warningText = ''; //clear it on game rerun
     }
 
     gameHasStarted = true;
