@@ -428,8 +428,8 @@ var createGame = function() {
     var warningEl = document.getElementById('warning');
     if (userNetMoney < 0) {
         warningEl.innerText = 'This game isn\'t winnable! (net $ must be > 0)';
-    } else if (userNetMoney <= genus) {
-        warningEl.innerText = 'This game might not be winnable! (net $ (' + userNetMoney + ') should be greater than genus (' + genus + ')'; 
+    } else if (userNetMoney < genus) {
+        warningEl.innerText = 'This game might not be winnable! (net $ (' + userNetMoney + ') should be greater than or equal to the genus (' + genus + ')'; 
     } else {
         warningEl.innerText = ''; //clear it on game rerun
     }
